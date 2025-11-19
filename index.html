@@ -7,9 +7,9 @@
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 统一使用 Inter 字体，并提供系统回退 */
+        /* 强制使用 Helvetica Now Display 字体，并提供系统回退 */
         body {
-            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            font-family: 'Helvetica Now Display', 'Helvetica Neue', 'Arial', sans-serif;
             /* 隐藏滚动条，打造应用感 */
             overflow: hidden;
             padding-top: 0; 
@@ -86,21 +86,21 @@
         let adminToggleBtn, itemEditModal, itemEditIdEl, editImageUrlEl, editVideoUrlEl;
         let authModal, authUsernameEl, authPasswordEl, authErrorMessageEl;
         
-        // ** 新增视觉参数编辑元素 **
-        let editFisheyeRadiusEl, editDecayPowerEl, editMinScaleEl;
+        // ** 视觉参数编辑元素 **
+        let editFisheyeRadiusEl, editDecayPowerEl, editMinScaleEl, editMaxScaleEl;
 
 
         // --- 配置/状态变量 ---
         const NUM_COLS = 14; 
         const NUM_ROWS = 10; 
         const TOTAL_ITEMS = NUM_COLS * NUM_ROWS;
-        const MAX_SCALE = 3.0; // 鱼眼最大放大倍数（固定）
         const PLACEHOLDER_VID = "https://www.w3schools.com/html/mov_bbb.mp4"; // 默认视频占位符
 
         // ** 动态交互参数 **
         let currentFisheyeRadius = 300;
         let currentDecayPower = 2.0; // 鱼眼衰减幅度 (指数)
         let currentMinScale = 0.175; // 初始大小
+        let currentMaxScale = 3.0; // 最大放大倍数
 
         // ** 加速交互反馈：将平滑系数提高到 0.2 **
         const PARALLAX_SMOOTHING = 0.2; 
@@ -110,7 +110,8 @@
         const DEFAULT_FISHEYE_SETTINGS = {
             radius: 300,
             decayPower: 2.0,
-            minScale: 0.175
+            minScale: 0.175,
+            maxScale: 3.0 
         };
 
         const GRID_COLORS = [
@@ -178,7 +179,7 @@
             }
         }
 
-        // --- Admin/Auth 逻辑 (更新了编辑模式的逻辑) ---
+        // --- Admin/Auth 逻辑 (保持不变) ---
 
         window.setAdminMode = (mode) => {
             isAdminMode = mode;
@@ -200,7 +201,6 @@
             }
         };
 
-        // ... handleAdminToggle, openAuthModal, closeAuthModal, handleAdminLogin (保持不变) ...
         window.handleAdminToggle = () => {
             if (!adminToggleBtn) return; 
             if (isAdminMode) {
@@ -272,10 +272,11 @@
                 editSubtitleColorPickerEl.value = subtitleStyle.color;
                 editSubtitleSpacingEl.value = subtitleStyle.spacing;
                 
-                // ** 填充新的视觉参数 **
+                // ** 填充视觉参数 **
                 editFisheyeRadiusEl.value = currentFisheyeRadius;
                 editDecayPowerEl.value = currentDecayPower;
                 editMinScaleEl.value = currentMinScale;
+                editMaxScaleEl.value = currentMaxScale; // 填充最大放大倍数
 
                 contentDisplay.classList.add('hidden');
                 editContainer.classList.remove('hidden');
@@ -321,6 +322,7 @@
                 radius: parseFloat(editFisheyeRadiusEl.value) || DEFAULT_FISHEYE_SETTINGS.radius,
                 decayPower: parseFloat(editDecayPowerEl.value) || DEFAULT_FISHEYE_SETTINGS.decayPower,
                 minScale: parseFloat(editMinScaleEl.value) || DEFAULT_FISHEYE_SETTINGS.minScale,
+                maxScale: parseFloat(editMaxScaleEl.value) || DEFAULT_FISHEYE_SETTINGS.maxScale, // 保存最大放大倍数
             };
 
             try {
@@ -362,6 +364,7 @@
             currentFisheyeRadius = DEFAULT_FISHEYE_SETTINGS.radius;
             currentDecayPower = DEFAULT_FISHEYE_SETTINGS.decayPower;
             currentMinScale = DEFAULT_FISHEYE_SETTINGS.minScale;
+            currentMaxScale = DEFAULT_FISHEYE_SETTINGS.maxScale;
 
             // 初始化网格数据并渲染
             initializeDefaultGridData(); 
@@ -406,6 +409,7 @@
                 currentFisheyeRadius = settings.radius;
                 currentDecayPower = settings.decayPower;
                 currentMinScale = settings.minScale;
+                currentMaxScale = settings.maxScale || DEFAULT_FISHEYE_SETTINGS.maxScale; // 读取最大放大倍数
                 
                 // 确保网格更新初始大小
                 updateGridDOM(); 
@@ -414,9 +418,6 @@
                 console.error("Error listening to content:", error);
             });
         };
-
-        // ... setupGridListener, initializeDefaultGridData, createGrid, updateGridDOM, 
-        //     openItemEditPanel, closeItemEditPanel, saveItemChanges (逻辑不变，但 createGrid/updateGridDOM 依赖 currentMinScale) ...
 
         /**
          * 监听 Firestore 上的网格项目变化
@@ -700,10 +701,11 @@
             editSubtitleColorPickerEl = document.getElementById('edit-subtitle-color-picker');
             editSubtitleSpacingEl = document.getElementById('edit-subtitle-spacing');
 
-            // ** 新增视觉参数元素 **
+            // ** 视觉参数元素 **
             editFisheyeRadiusEl = document.getElementById('edit-fisheye-radius');
             editDecayPowerEl = document.getElementById('edit-decay-power');
             editMinScaleEl = document.getElementById('edit-min-scale');
+            editMaxScaleEl = document.getElementById('edit-max-scale'); 
 
 
             // Admin UI elements
@@ -899,6 +901,7 @@
             const fisheyeRadius = currentFisheyeRadius;
             const minScale = currentMinScale;
             const decayPower = currentDecayPower;
+            const maxScale = currentMaxScale; // 使用动态的最大放大倍数
 
 
             for (const item of items) {
@@ -942,10 +945,14 @@
                     // ** 使用动态衰减幅度 (decayPower) **
                     const easedProximity = 1 - Math.pow(1 - proximity, decayPower); 
                     
-                    // ** 使用动态初始大小 minScale **
-                    scale = minScale + (MAX_SCALE - minScale) * easedProximity;
+                    // ** 使用动态初始大小 minScale 和动态最大放大倍数 maxScale **
+                    scale = minScale + (maxScale - minScale) * easedProximity;
                     opacity = 0.7 + (1.0 - 0.7) * easedProximity;
                     
+                    // ** 【Z-index 逻辑更新：根据您的要求，Z-index 严格基于距离鼠标的远近（即 proximity）】**
+                    // proximity (0-1) 与距离 dist (fisheyeRadius-0) 成反比。
+                    // zIndex 范围从 2 (边缘) 到 10 (中心)
+                    // 这样能确保距离鼠标最近（proximity 最高）的元素始终在最前面。
                     zIndex = 2 + Math.floor(proximity * 8); 
                     brightness = 1.0; 
                 }
@@ -1075,7 +1082,7 @@
                         </div>
                     </div>
                     
-                    <!-- 新增：网格视觉参数编辑 -->
+                    <!-- 网格视觉参数编辑 -->
                     <div class="p-4 bg-gray-800 rounded-lg">
                         <label class="block text-lg font-medium text-white mb-2">网格视觉参数</label>
                         <div class="space-y-3">
@@ -1090,6 +1097,11 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-400">初始大小 (0.01 - 1.0) - 未放大时的图标大小</label>
                                 <input id="edit-min-scale" type="number" step="0.01" min="0.01" max="1.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="0.175">
+                            </div>
+                            <!-- Maximum Scale -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400">最大放大倍数 (Max Scale - 1.0 - 5.0)</label>
+                                <input id="edit-max-scale" type="number" step="0.1" min="1.0" max="5.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="3.0">
                             </div>
                         </div>
                     </div>
