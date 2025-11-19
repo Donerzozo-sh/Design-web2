@@ -25,10 +25,10 @@
         }
 
         .grid-item {
-            /* 关键：加速过渡效果，提高响应速度 */
-            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), 
-                        opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1),
-                        filter 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            /* 关键：稍微增加过渡时间 (0.1s -> 0.15s) 以提升视觉平滑感 */
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), 
+                        opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+                        filter 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             
             will-change: transform, opacity, filter;
             opacity: 0.7;
@@ -88,6 +88,7 @@
         
         // ** 视觉参数编辑元素 **
         let editFisheyeRadiusEl, editDecayPowerEl, editMinScaleEl, editMaxScaleEl;
+        let editParallaxSmoothingEl; 
 
 
         // --- 配置/状态变量 ---
@@ -101,9 +102,9 @@
         let currentDecayPower = 2.0; // 鱼眼衰减幅度 (指数)
         let currentMinScale = 0.175; // 初始大小
         let currentMaxScale = 3.0; // 最大放大倍数
+        let currentParallaxSmoothing = 0.2; // 【动态】平滑度参数 (回滚后的默认值)
 
-        // ** 加速交互反馈：将平滑系数提高到 0.2 **
-        const PARALLAX_SMOOTHING = 0.2; 
+        // 固定的视差强度
         const PARALLAX_INTENSITY = 0.1; 
 
         // 默认视觉设置
@@ -111,7 +112,8 @@
             radius: 300,
             decayPower: 2.0,
             minScale: 0.175,
-            maxScale: 3.0 
+            maxScale: 3.0, 
+            parallaxSmoothing: 0.2, // 平滑度默认值
         };
 
         const GRID_COLORS = [
@@ -179,23 +181,31 @@
             }
         }
 
-        // --- Admin/Auth 逻辑 (保持不变) ---
+        // --- Admin/Auth 逻辑 ---
 
         window.setAdminMode = (mode) => {
             isAdminMode = mode;
             if (!adminToggleBtn || !topContentArea) return; 
+
+            // 1. 文本改为 (R)
+            adminToggleBtn.textContent = '(R)';
             
+            // 2. 清除所有颜色/背景类
+            adminToggleBtn.classList.remove('text-black', 'text-white', 'bg-red-600', 'hover:bg-red-700', 'bg-gray-300', 'hover:bg-gray-400', 'text-sm');
+            adminToggleBtn.classList.add('text-base', 'font-bold');
+
             if (mode) {
-                adminToggleBtn.textContent = 'Admin Mode (ON)';
-                adminToggleBtn.classList.add('bg-red-600', 'hover:bg-red-700');
-                adminToggleBtn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                // ON: 白色文字, 红色背景
+                adminToggleBtn.classList.add('text-white', 'bg-red-600', 'hover:bg-red-700');
                 topContentArea.classList.add('border-b-4', 'border-red-600');
                 window.closeAuthModal(); 
-                console.log("Admin Mode activated.");
+                
+                // ** 【新增】进入管理员模式时，立即复位网格缩放状态 **
+                resetGridScale();
+                console.log("Admin Mode activated. Grid scales reset.");
             } else {
-                adminToggleBtn.textContent = 'Admin Mode (OFF)';
-                adminToggleBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
-                adminToggleBtn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+                // OFF: 黑色文字, 浅灰背景
+                adminToggleBtn.classList.add('text-black', 'bg-gray-300', 'hover:bg-gray-400');
                 topContentArea.classList.remove('border-b-4', 'border-red-600');
                 console.log("Admin Mode deactivated.");
             }
@@ -214,7 +224,9 @@
             if (!authModal || !authErrorMessageEl || !authPasswordEl) return; 
 
             authErrorMessageEl.classList.add('hidden'); 
-            authPasswordEl.value = '1234';
+            // 移除自动填充密码，改为清空
+            authPasswordEl.value = ''; 
+            authUsernameEl.value = 'admin'; // 保留用户名填充
             authModal.classList.remove('hidden');
         };
 
@@ -236,7 +248,7 @@
                 window.setAdminMode(true);
             } else {
                 authErrorMessageEl.classList.remove('hidden');
-                authPasswordEl.value = ''; 
+                authPasswordEl.value = ''; // 登录失败时清空密码
             }
         };
 
@@ -276,7 +288,9 @@
                 editFisheyeRadiusEl.value = currentFisheyeRadius;
                 editDecayPowerEl.value = currentDecayPower;
                 editMinScaleEl.value = currentMinScale;
-                editMaxScaleEl.value = currentMaxScale; // 填充最大放大倍数
+                editMaxScaleEl.value = currentMaxScale; 
+                editParallaxSmoothingEl.value = currentParallaxSmoothing; // 填充平滑度
+                
 
                 contentDisplay.classList.add('hidden');
                 editContainer.classList.remove('hidden');
@@ -317,12 +331,13 @@
                 spacing: editSubtitleSpacingEl.value,
             };
             
-            // ** 收集新的视觉参数 **
+            // ** 收集新的视觉参数 (包括平滑度) **
             const newFisheyeSettings = {
                 radius: parseFloat(editFisheyeRadiusEl.value) || DEFAULT_FISHEYE_SETTINGS.radius,
                 decayPower: parseFloat(editDecayPowerEl.value) || DEFAULT_FISHEYE_SETTINGS.decayPower,
                 minScale: parseFloat(editMinScaleEl.value) || DEFAULT_FISHEYE_SETTINGS.minScale,
-                maxScale: parseFloat(editMaxScaleEl.value) || DEFAULT_FISHEYE_SETTINGS.maxScale, // 保存最大放大倍数
+                maxScale: parseFloat(editMaxScaleEl.value) || DEFAULT_FISHEYE_SETTINGS.maxScale, 
+                parallaxSmoothing: parseFloat(editParallaxSmoothingEl.value) || DEFAULT_FISHEYE_SETTINGS.parallaxSmoothing, // 收集平滑度
             };
 
             try {
@@ -332,7 +347,7 @@
                     subtitle: newSubtitle || DEFAULT_CONTENT.subtitle,
                     titleStyle: newTitleStyle,
                     subtitleStyle: newSubtitleStyle,
-                    fisheyeSettings: newFisheyeSettings, // 保存新的视觉参数
+                    fisheyeSettings: newFisheyeSettings, // 保存包含平滑度的新视觉参数
                     timestamp: new Date()
                 });
                 console.log("Content and Settings saved successfully.");
@@ -365,11 +380,13 @@
             currentDecayPower = DEFAULT_FISHEYE_SETTINGS.decayPower;
             currentMinScale = DEFAULT_FISHEYE_SETTINGS.minScale;
             currentMaxScale = DEFAULT_FISHEYE_SETTINGS.maxScale;
+            currentParallaxSmoothing = DEFAULT_FISHEYE_SETTINGS.parallaxSmoothing; // 应用默认平滑度
 
             // 初始化网格数据并渲染
             initializeDefaultGridData(); 
             createGrid(); 
             startAnimationLoop(); 
+            window.setAdminMode(false); // 确保在回退模式下也应用正确的按钮样式
         };
 
 
@@ -409,7 +426,8 @@
                 currentFisheyeRadius = settings.radius;
                 currentDecayPower = settings.decayPower;
                 currentMinScale = settings.minScale;
-                currentMaxScale = settings.maxScale || DEFAULT_FISHEYE_SETTINGS.maxScale; // 读取最大放大倍数
+                currentMaxScale = settings.maxScale || DEFAULT_FISHEYE_SETTINGS.maxScale; 
+                currentParallaxSmoothing = settings.parallaxSmoothing || DEFAULT_FISHEYE_SETTINGS.parallaxSmoothing; // 更新平滑度
                 
                 // 确保网格更新初始大小
                 updateGridDOM(); 
@@ -706,6 +724,7 @@
             editDecayPowerEl = document.getElementById('edit-decay-power');
             editMinScaleEl = document.getElementById('edit-min-scale');
             editMaxScaleEl = document.getElementById('edit-max-scale'); 
+            editParallaxSmoothingEl = document.getElementById('edit-parallax-smoothing'); // 平滑度元素
 
 
             // Admin UI elements
@@ -780,6 +799,9 @@
                     e.preventDefault();
                 }
             });
+            
+            // 初始化 Admin Mode 样式 (默认关闭)
+            window.setAdminMode(false); 
         }
 
 
@@ -870,26 +892,42 @@
             gridContainer.style.transform = `translate3d(${finalX}px, ${finalY}px, 0)`; 
         }
 
+        /**
+         * 【新增函数】将所有网格元素复位到初始大小。
+         */
+        function resetGridScale() {
+            if (items.length === 0) return; 
+            
+            // 使用动态初始大小进行复位
+            for (const item of items) {
+                item.el.style.transform = `scale(${currentMinScale})`;
+                item.el.style.opacity = '0.7';
+                item.el.style.zIndex = 1;
+                item.el.style.filter = 'brightness(1.0)'; 
+            }
+        }
+
         function updateFisheyeEffect() {
             if (!gridContainer) { 
                  animationFrameId = null;
                  return;
             }
             
-            // --- 1. 视差偏移计算与应用 (加速处理) ---
+            // --- 1. 视差偏移计算与应用 (使用动态平滑度) ---
             const viewportCenterX = window.innerWidth / 2;
             const viewportCenterY = window.innerHeight / 2;
             
             const targetParallaxX = (mousePos.x - viewportCenterX) * PARALLAX_INTENSITY;
             const targetParallaxY = (mousePos.y - viewportCenterY) * PARALLAX_INTENSITY;
             
-            // ** 使用加速后的平滑系数 PARALLAX_SMOOTHING (0.2) **
-            parallaxOffset.x += (targetParallaxX - parallaxOffset.x) * PARALLAX_SMOOTHING;
-            parallaxOffset.y += (targetParallaxY - parallaxOffset.y) * PARALLAX_SMOOTHING;
+            // 使用动态平滑系数 currentParallaxSmoothing
+            parallaxOffset.x += (targetParallaxX - parallaxOffset.x) * currentParallaxSmoothing;
+            parallaxOffset.y += (targetParallaxY - parallaxOffset.y) * currentParallaxSmoothing;
             
             applyGridTransform(); 
 
             if (isAdminMode) {
+                // 管理员模式下，只执行视差，不执行鱼眼和闪烁效果
                 animationFrameId = requestAnimationFrame(updateFisheyeEffect);
                 return;
             }
@@ -897,7 +935,7 @@
             // --- 2. 鱼眼效果计算 (使用动态参数) ---
             const fisheyeCenterX = mousePos.x;
             const fisheyeCenterY = mousePos.y;
-            // ** 动态读取配置参数 **
+            // 动态读取配置参数
             const fisheyeRadius = currentFisheyeRadius;
             const minScale = currentMinScale;
             const decayPower = currentDecayPower;
@@ -930,7 +968,7 @@
                     const brightnessRange = maxBrightness - minBrightness; 
                     brightness = minBrightness + (brightnessRange * sineVal);
                     
-                    // ** 使用动态初始大小计算闪烁范围 **
+                    // 使用动态初始大小计算闪烁范围
                     const minTwinkleScale = minScale * 0.70; 
                     const maxTwinkleScale = minScale * 1.30; 
                     const scaleRange = maxTwinkleScale - minTwinkleScale;
@@ -942,17 +980,15 @@
                     // 鱼眼效果区域
                     const proximity = 1 - (dist / fisheyeRadius);
                     
-                    // ** 使用动态衰减幅度 (decayPower) **
+                    // 使用动态衰减幅度 (decayPower)
                     const easedProximity = 1 - Math.pow(1 - proximity, decayPower); 
                     
-                    // ** 使用动态初始大小 minScale 和动态最大放大倍数 maxScale **
+                    // 使用动态初始大小 minScale 和动态最大放大倍数 maxScale
                     scale = minScale + (maxScale - minScale) * easedProximity;
                     opacity = 0.7 + (1.0 - 0.7) * easedProximity;
                     
-                    // ** 【Z-index 逻辑更新：根据您的要求，Z-index 严格基于距离鼠标的远近（即 proximity）】**
-                    // proximity (0-1) 与距离 dist (fisheyeRadius-0) 成反比。
+                    // Z-index 逻辑：距离鼠标越近（proximity 越高），zIndex 越高
                     // zIndex 范围从 2 (边缘) 到 10 (中心)
-                    // 这样能确保距离鼠标最近（proximity 最高）的元素始终在最前面。
                     zIndex = 2 + Math.floor(proximity * 8); 
                     brightness = 1.0; 
                 }
@@ -980,13 +1016,9 @@
         function resetGrid() {
             if (items.length === 0 || !gridContainer) return; 
 
-            // ** 使用动态初始大小进行复位 **
-            for (const item of items) {
-                item.el.style.transform = `scale(${currentMinScale})`;
-                item.el.style.opacity = '0.7';
-                item.el.style.zIndex = 1;
-                item.el.style.filter = 'brightness(1.0)'; 
-            }
+            // 调用新的复位函数
+            resetGridScale(); 
+
             parallaxOffset = { x: 0, y: 0 };
             applyGridTransform(); 
         }
@@ -1082,26 +1114,31 @@
                         </div>
                     </div>
                     
-                    <!-- 网格视觉参数编辑 -->
+                    <!-- 网格视觉参数编辑 - 调整为响应式 5 列布局 -->
                     <div class="p-4 bg-gray-800 rounded-lg">
-                        <label class="block text-lg font-medium text-white mb-2">网格视觉参数</label>
-                        <div class="space-y-3">
+                        <label class="block text-lg font-medium text-white mb-4">网格视觉参数</label>
+                        <!-- 调整为 md:grid-cols-3 lg:grid-cols-5 以容纳 5 个元素 -->
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                             <div>
-                                <label class="block text-sm font-medium text-gray-400">鱼眼半径 (px) - 影响范围</label>
+                                <label class="block text-sm font-medium text-gray-400">鱼眼半径 (px)</label>
                                 <input id="edit-fisheye-radius" type="number" step="10" min="100" max="1000" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="300">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-400">衰减幅度 (1.0 - 5.0) - 数值越大，越靠近中心才放大</label>
+                                <label class="block text-sm font-medium text-gray-400">衰减幅度 (1.0 - 5.0)</label>
                                 <input id="edit-decay-power" type="number" step="0.1" min="1.0" max="5.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="2.0">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-400">初始大小 (0.01 - 1.0) - 未放大时的图标大小</label>
+                                <label class="block text-sm font-medium text-gray-400">初始大小 (0.01 - 1.0)</label>
                                 <input id="edit-min-scale" type="number" step="0.01" min="0.01" max="1.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="0.175">
                             </div>
-                            <!-- Maximum Scale -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-400">最大放大倍数 (Max Scale - 1.0 - 5.0)</label>
+                                <label class="block text-sm font-medium text-gray-400">最大放大倍数</label>
                                 <input id="edit-max-scale" type="number" step="0.1" min="1.0" max="5.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="3.0">
+                            </div>
+                            <!-- 动画平滑度调节 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400">动画平滑度 (0.01 - 1.0)</label>
+                                <input id="edit-parallax-smoothing" type="number" step="0.01" min="0.01" max="1.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="0.2">
                             </div>
                         </div>
                     </div>
@@ -1116,8 +1153,8 @@
 
         <!-- Admin Toggle Button (始终可见，但功能受限) -->
         <button id="admin-toggle-btn" onclick="handleAdminToggle()" 
-            class="fixed bottom-4 right-4 z-50 px-4 py-2 rounded-full text-white text-sm font-semibold shadow-xl transition-all duration-300 bg-gray-700 hover:bg-gray-600">
-            Admin Mode (OFF)
+            class="fixed bottom-4 right-4 z-50 w-12 h-12 flex items-center justify-center rounded-full text-black text-base font-bold shadow-xl transition-all duration-300 bg-gray-300 hover:bg-gray-400">
+            (R)
         </button>
 
 
@@ -1174,7 +1211,8 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-300">密码</label>
-                        <input id="auth-password" type="password" value="1234" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2">
+                        <!-- 密码输入框已清空 -->
+                        <input id="auth-password" type="password" value="" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2">
                     </div>
                     <p id="auth-error-message" class="text-red-400 text-sm hidden">用户名或密码错误。</p>
                 </div>
