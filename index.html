@@ -190,7 +190,7 @@
                 window.toggleEditMode(false);
                 controls.classList.remove('z-50'); controls.classList.add('z-30');
                 viewToggleBtn.textContent = '切换到列表编辑';
-            }
+                 }
         };
 
         function resetFocusAndScale() {
@@ -208,7 +208,7 @@
             else { authErrorMessageEl.classList.remove('hidden'); authPasswordEl.value = ''; }
         };
 
-        // ==================== 保存永远成功 ====================
+        // ==================== 保存函数（彻底修复） ====================
         window.saveInlineItemChange = async (itemId, imgInputId, vidInputId, btn) => {
             const newImg = document.getElementById(imgInputId).value.trim();
             const newVid = document.getElementById(vidInputId).value.trim();
@@ -235,7 +235,6 @@
                 }, 1500);
             }
         };
-
         // ==================== 视频关闭后动画100%复活 ====================
         function closeVideoModalFunc() {
             modal.classList.add('hidden');
@@ -655,5 +654,6 @@
     </div>
 </body>
 </html>
+
 
 
