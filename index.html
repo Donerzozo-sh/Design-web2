@@ -1,101 +1,76 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title id="web-title">灵感矩阵 | 设计作品集</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      font-family: 'Helvetica Now Display', 'Helvetica Neue', Arial, sans-serif;
-      overflow: hidden;
-      background: #000;
-      color: #fff;
-      user-select: none;
-    }
-    #grid-container {
-      width: 140vw;
-      height: 140vh;
-      display: grid;
-      grid-template-columns: repeat(10, 1fr);
-      gap: 1px;
-    }
-    .grid-item {
-      transition: transform .15s, opacity .15s, filter .15s;
-      will-change: transform, opacity, filter;
-      opacity: .7;
-      transform: scale(.175);
-    }
-    .table-thumbnail {
-      width: 60px;
-      height: 60px;
-      object-fit: cover;
-      border-radius: 4px;
-      border: 1px solid #4b5563;
-    }
-    .admin-table-row:hover {
-      background: #374151;
-    }
-    .selected-row {
-      background: #ef4444 !important;
-    }
+    body{font-family:'Helvetica Now Display','Helvetica Neue',Arial,sans-serif;overflow:hidden;background:#000;color:#fff;user-select:none}
+    #grid-container{width:140vw;height:140vh;display:grid;grid-template-columns:repeat(10,1fr);gap:1px}
+    .grid-item{transition:transform .15s,opacity .15s,filter .15s;will-change:transform,opacity,filter;opacity:.7;transform:scale(.175)}
+    .table-thumbnail{width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #4b5563}
+    .admin-table-row:hover{background:#374151}
+    .selected-row{background:#ef4444!important}
+    /* 上传进度条 */
+    .progress-bar{height:4px;background:#10b981;width:0%;transition:width .3s}
   </style>
 </head>
 <body class="min-h-screen relative">
-  <!-- 顶部控制 -->
-  <div id="top-content-area" class="fixed top-0 left-0 right-0 p-8 z-20 pointer-events-none">
-    <div id="admin-persistent-controls" class="absolute top-8 right-8 flex space-x-4 pointer-events-auto">
-      <button id="view-toggle-btn" class="hidden px-4 py-2 bg-blue-600 rounded-lg" onclick="switchView(currentView==='grid'?'table':'grid')">切换到列表编辑</button>
-    </div>
-    <div id="content-display" class="flex flex-col pointer-events-auto">
-      <h1 id="main-title" class="text-4xl font-extrabold cursor-pointer" onclick="toggleEditMode(true)">3D&Motion Creative&Production</h1>
-      <p id="sub-text" class="text-gray-400 cursor-pointer" onclick="toggleEditMode(true)">Powerd by REDesign</p>
-    </div>
-    <!-- 编辑面板 -->
-    <div id="edit-mode-container" class="hidden bg-gray-900/90 p-6 rounded-xl shadow-2xl max-w-4xl pointer-events-auto">
-      <h2 class="text-xl font-bold mb-4 text-red-400">顶部内容及视觉参数编辑 (Admin)</h2>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm text-gray-400">网站标题</label>
-          <input id="edit-web-title" type="text" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="灵感矩阵 | 设计作品集" />
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="p-4 bg-gray-800 rounded-lg">
-            <label class="block text-lg font-medium mb-2">主标题</label>
-            <input id="edit-title" type="text" class="w-full rounded-md bg-gray-700 text-white p-2" value="3D&Motion Creative&Production" />
-            <div class="grid grid-cols-2 gap-3 mt-3 text-sm">
-              <select id="edit-title-size" class="rounded-md bg-gray-700 text-white p-2"><option value="text-8xl">特大号</option></select>
-              <select id="edit-title-weight" class="rounded-md bg-gray-700 text-white p-2"><option value="font-extrabold">极粗</option></select>
-              <input id="edit-title-color-picker" type="color" class="h-10 rounded-md bg-gray-700 p-1" value="#FFFFFF" />
-              <select id="edit-title-spacing" class="rounded-md bg-gray-700 text-white p-2"><option value="tracking-normal">默认间距</option></select>
-            </div>
-          </div>
-          <div class="p-4 bg-gray-800 rounded-lg">
-            <label class="block text-lg font-medium mb-2">副标题</label>
-            <input id="edit-subtitle" type="text" class="w-full rounded-md bg-gray-700 text-white p-2" value="Powerd by REDesign" />
-            <div class="grid grid-cols-2 gap-3 mt-3 text-sm">
-              <select id="edit-subtitle-size" class="rounded-md bg-gray-700 text-white p-2"><option value="text-2xl">大号</option></select>
-              <select id="edit-subtitle-weight" class="rounded-md bg-gray-700 text-white p-2"><option value="font-normal">默认</option></select>
-              <input id="edit-subtitle-color-picker" type="color" class="h-10 rounded-md bg-gray-700 p-1" value="#9CA3AF" />
-              <select id="edit-subtitle-spacing" class="rounded-md bg-gray-700 text-white p-2"><option value="tracking-normal">默认间距</option></select>
-            </div>
+
+<!-- 顶部控制 -->
+<div id="top-content-area" class="fixed top-0 left-0 right-0 p-8 z-20 pointer-events-none">
+  <div id="admin-persistent-controls" class="absolute top-8 right-8 flex space-x-4 pointer-events-auto">
+    <button id="view-toggle-btn" class="hidden px-4 py-2 bg-blue-600 rounded-lg" onclick="switchView(currentView==='grid'?'table':'grid')">切换到列表编辑</button>
+  </div>
+  <div id="content-display" class="flex flex-col pointer-events-auto">
+    <h1 id="main-title" class="text-4xl font-extrabold cursor-pointer" onclick="toggleEditMode(true)">3D&Motion Creative&Production</h1>
+    <p id="sub-text" class="text-gray-400 cursor-pointer" onclick="toggleEditMode(true)">Powerd by REDesign</p>
+  </div>
+  <!-- 编辑面板 -->
+  <div id="edit-mode-container" class="hidden bg-gray-900/90 p-6 rounded-xl shadow-2xl max-w-4xl pointer-events-auto">
+    <h2 class="text-xl font-bold mb-4 text-red-400">顶部内容及视觉参数编辑 (Admin)</h2>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm text-gray-400">网站标题</label>
+        <input id="edit-web-title" type="text" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="灵感矩阵 | 设计作品集"/>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="p-4 bg-gray-800 rounded-lg">
+          <label class="block text-lg font-medium mb-2">主标题</label>
+          <input id="edit-title" type="text" class="w-full rounded-md bg-gray-700 text-white p-2" value="3D&Motion Creative&Production"/>
+          <div class="grid grid-cols-2 gap-3 mt-3 text-sm">
+            <select id="edit-title-size" class="rounded-md bg-gray-700 text-white p-2"><option value="text-8xl">特大号</option></select>
+            <select id="edit-title-weight" class="rounded-md bg-gray-700 text-white p-2"><option value="font-extrabold">极粗</option></select>
+            <input id="edit-title-color-picker" type="color" class="h-10 rounded-md bg-gray-700 p-1" value="#FFFFFF"/>
+            <select id="edit-title-spacing" class="rounded-md bg-gray-700 text-white p-2"><option value="tracking-normal">默认间距</option></select>
           </div>
         </div>
         <div class="p-4 bg-gray-800 rounded-lg">
-          <label class="block text-lg font-medium mb-4">网格视觉参数</label>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
-            <div><label class="block text-gray-400">鱼眼半径 (px)</label><input id="edit-fisheye-radius" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="300" /></div>
-            <div><label class="block text-gray-400">衰减幅度</label><input id="edit-decay-power" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="2.0" /></div>
-            <div><label class="block text-gray-400">初始大小</label><input id="edit-min-scale" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="0.175" /></div>
-            <div><label class="block text-gray-400">最大放大倍数</label><input id="edit-max-scale" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="3.0" /></div>
-            <div><label class="block text-gray-400">动画平滑度</label><input id="edit-parallax-smoothing" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="0.2" /></div>
-            <div><label class="block text-gray-400">图片间距 (px)</label><input id="edit-grid-gap" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="1" /></div>
+          <label class="block text-lg font-medium mb-2">副标题</label>
+          <input id="edit-subtitle" type="text" class="w-full rounded-md bg-gray-700 text-white p-2" value="Powerd by REDesign"/>
+          <div class="grid grid-cols-2 gap-3 mt-3 text-sm">
+            <select id="edit-subtitle-size" class="rounded-md bg-gray-700 text-white p-2"><option value="text-2xl">大号</option></select>
+            <select id="edit-subtitle-weight" class="rounded-md bg-gray-700 text-white p-2"><option value="font-normal">默认</option></select>
+            <input id="edit-subtitle-color-picker" type="color" class="h-10 rounded-md bg-gray-700 p-1" value="#9CA3AF"/>
+            <select id="edit-subtitle-spacing" class="rounded-md bg-gray-700 text-white p-2"><option value="tracking-normal">默认间距</option></select>
           </div>
         </div>
-        <div class="flex space-x-4 mt-6">
-          <button class="px-4 py-2 bg-red-600 text-white rounded-lg" onclick="saveContent()">保存更改</button>
-          <button class="px-4 py-2 bg-gray-500 text-white rounded-lg" onclick="toggleEditMode(false)">取消</button>
+      </div>
+      <div class="p-4 bg-gray-800 rounded-lg">
+        <label class="block text-lg font-medium mb-4">网格视觉参数</label>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
+          <div><label class="block text-gray-400">鱼眼半径 (px)</label><input id="edit-fisheye-radius" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="300" /></div>
+          <div><label class="block text-gray-400">衰减幅度</label><input id="edit-decay-power" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="2.0" /></div>
+          <div><label class="block text-gray-400">初始大小</label><input id="edit-min-scale" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="0.175" /></div>
+          <div><label class="block text-gray-400">最大放大倍数</label><input id="edit-max-scale" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="3.0" /></div>
+          <div><label class="block text-gray-400">动画平滑度</label><input id="edit-parallax-smoothing" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="0.2" /></div>
+          <div><label class="block text-gray-400">图片间距 (px)</label><input id="edit-grid-gap" type="number" class="w-full mt-1 rounded-md bg-gray-700 text-white p-2" value="1" /></div>
         </div>
+      </div>
+      <div class="flex space-x-4 mt-6">
+        <button class="px-4 py-2 bg-red-600 text-white rounded-lg" onclick="saveContent()">保存更改</button>
+        <button class="px-4 py-2 bg-gray-500 text-white rounded-lg" onclick="toggleEditMode(false)">取消</button>
       </div>
     </div>
   </div>
@@ -122,31 +97,16 @@
     2025 <span class="cursor-pointer hover:text-white" onclick="handleAdminToggle()">©</span> All Rights Reserved By REDesign
   </div>
 
-  <!-- 登录模态框 -->
-  <div id="auth-modal" class="fixed inset-0 bg-black/90 flex justify-center items-center hidden z-50">
-    <div class="bg-gray-800 p-8 rounded-xl w-full max-w-md border border-gray-700">
-      <h2 class="text-2xl font-bold text-white mb-6 text-center">管理员登录</h2>
-      <div class="space-y-5 text-white">
-        <div><label class="block text-sm text-gray-300 mb-2">用户名</label><input id="auth-username" type="text" value="admin" class="w-full rounded-md bg-gray-700 text-white p-3" /></div>
-        <div><label class="block text-sm text-gray-300 mb-2">密码</label><input id="auth-password" type="password" placeholder="请输入密码" class="w-full rounded-md bg-gray-700 text-white p-3" /></div>
-        <p id="auth-error-message" class="text-red-400 text-sm hidden text-center">用户名或密码错误。</p>
-      </div>
-      <div class="flex space-x-4 mt-8">
-        <button class="flex-1 py-3 bg-red-600 text-white rounded-lg" onclick="handleAdminLogin()">登录</button>
-        <button class="flex-1 py-3 bg-gray-600 text-white rounded-lg" onclick="closeAuthModal()">取消</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
     // ==================== 配置区 ====================
     const firebaseConfig = {
-      apiKey: "AIzaSyDApuOEfnj7x7lg7T-3xceKQMlRvcdJV68",
+      apiKey: "AIzaSyDApuOEfnj7x-7lg7T-3xceKQMlRvcdJV68",
       authDomain: "design-c9479.firebaseapp.com",
       projectId: "design-c9479",
       storageBucket: "design-c9479.firebasestorage.app",
@@ -160,6 +120,7 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const storage = getStorage(app);
 
     let isLocalMode = false;
     let isAdminMode = false;
@@ -352,6 +313,60 @@
       }
     };
 
+    // ===== 新增：Firebase Storage 上传 =====
+    /**
+     * 上传文件到 Firebase Storage 并返回公开 URL
+     * @param {File} file 文件对象
+     * @param {string} folder 存储文件夹名（images / videos）
+     * @returns {Promise<string>} 公开下载 URL
+     */
+    async function uploadFileAndGetURL(file, folder = 'uploads') {
+      if (!file) return '';
+      const ext = file.name.split('.').pop();
+      const path = `${folder}/${Date.now()}.${ext}`;
+      const storageRef = ref(storage, path);
+      const task = uploadBytesResumable(storageRef, file);
+
+      // 可选：监听进度（这里简单跳过，直接 await）
+      await task;
+      return await getDownloadURL(storageRef); // 返回 https://firebasestorage.googleapis.com/...
+    }
+
+    // 为每行绑定「上传文件」事件（委托到 table 容器，动态行也可用）
+    window.setupUploadListeners = () => {
+      const tableContainer = document.getElementById('admin-table-container');
+      tableContainer.addEventListener('change', async (e) => {
+        if (!e.target.matches('input[type=file].upload-file-input')) return;
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const itemId = e.target.dataset.itemId;
+        const type = e.target.dataset.type; // 'img' | 'vid'
+        const saveBtn = document.querySelector(`#row-${itemId} .save-btn`);
+        const progress = document.querySelector(`#row-${itemId} .progress-bar`);
+
+        // 上传并获取 URL
+        saveBtn.textContent = '上传中...';
+        saveBtn.disabled = true;
+        progress.style.width = '0%';
+        try {
+          const url = await uploadFileAndGetURL(file, type === 'img' ? 'images' : 'videos');
+          // 把 URL 填入对应输入框
+          const input = document.getElementById(`${type}-input-${itemId}`);
+          input.value = url;
+          // 立即保存到 Firestore（复用原函数）
+          await window.saveInlineItemChange(itemId, `${type}-input-${itemId}`, `vid-input-${itemId}`, saveBtn);
+        } catch (err) {
+          console.error(err);
+          alert('上传失败：' + err.message);
+          saveBtn.textContent = '保存';
+          saveBtn.disabled = false;
+        } finally {
+          progress.style.width = '0%';
+        }
+      });
+    };
+
     window.selectItem = (itemId, rowElement) => {
       if (!isAdminMode) return;
       document.querySelectorAll('.admin-table-row').forEach(r => r.classList.remove('selected-row'));
@@ -371,14 +386,21 @@
 
     function renderAdminTable() {
       const container = document.getElementById('admin-table-container');
-      let html = `<div class="overflow-x-auto h-[80vh] bg-gray-900/90 p-4 rounded-xl shadow-2xl"><table class="min-w-full divide-y divide-gray-700"><thead class="sticky top-0 bg-gray-900/95"><tr>
-        <th class="px-3 py-3 text-left text-xs uppercase">ID</th>
-        <th class="px-3 py-3 text-left text-xs uppercase">预览</th>
-        <th class="px-3 py-3 text-left text-xs uppercase">位置</th>
-        <th class="px-3 py-3 text-left text-xs uppercase">图片 URL</th>
-        <th class="px-3 py-3 text-left text-xs uppercase">视频 URL</th>
-        <th class="px-3 py-3 text-left text-xs uppercase">操作</th>
-      </tr></thead><tbody class="divide-y divide-gray-800">`;
+      let html = `
+        <div class="overflow-x-auto h-[80vh] bg-gray-900/90 p-4 rounded-xl shadow-2xl">
+          <table class="min-w-full divide-y divide-gray-700">
+            <thead class="sticky top-0 bg-gray-900/95">
+              <tr>
+                <th class="px-3 py-3 text-left text-xs uppercase">ID</th>
+                <th class="px-3 py-3 text-left text-xs uppercase">预览</th>
+                <th class="px-3 py-3 text-left text-xs uppercase">位置</th>
+                <th class="px-3 py-3 text-left text-xs uppercase">图片 URL</th>
+                <th class="px-3 py-3 text-left text-xs uppercase">视频 URL</th>
+                <th class="px-3 py-3 text-left text-xs uppercase">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+      `;
       for (let i = 0; i < TOTAL_ITEMS; i++) {
         const itemId = `item_${i}`;
         const data = itemData[itemId] || { img: '', vid: PLACEHOLDER_VID, bgColor: getColorForColumn(getColumnIndex(i)) };
@@ -389,13 +411,30 @@
           <td class="px-3 py-2 text-sm">${i}</td>
           <td class="px-3 py-2"><img src="${displayImg}" class="table-thumbnail" onerror="this.src='https://placehold.co/60x60/374151/FFFFFF?text=${i}'" alt="Item ${i}" /></td>
           <td class="px-3 py-2"><div class="w-[60px] h-[45px] grid gap-[1px] bg-gray-900 border border-gray-700 rounded-sm overflow-hidden" style="grid-template-columns:repeat(${NUM_COLS},1fr);grid-template-rows:repeat(${NUM_ROWS},1fr);">${Array.from({length:TOTAL_ITEMS},(_,j)=>`<div class="w-full h-full" style="background-color:${j===i?data.bgColor:'#374151'}"></div>`).join('')}</div></td>
-          <td class="px-3 py-2 text-sm max-w-sm"><input id="img-input-${itemId}" type="text" value="${imgUrl}" placeholder="Image URL" class="w-full text-xs rounded-md bg-gray-700 text-white p-1" /></td>
-          <td class="px-3 py-2 text-sm max-w-sm"><input id="vid-input-${itemId}" type="text" value="${data.vid}" placeholder="Video URL" class="w-full text-xs rounded-md bg-gray-700 text-white p-1" /></td>
-          <td class="px-3 py-2 whitespace-nowrap text-sm"><button class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700" onclick="event.stopPropagation(); saveInlineItemChange('${itemId}', 'img-input-${itemId}', 'vid-input-${itemId}', this);">保存</button></td>
+          <td class="px-3 py-2 text-sm max-w-sm">
+            <input id="img-input-${itemId}" type="text" value="${imgUrl}" placeholder="Image URL" class="w-full text-xs rounded-md bg-gray-700 text-white p-1" />
+            <div class="flex items-center mt-2 space-x-2">
+              <input type="file" class="upload-file-input hidden" data-item-id="${itemId}" data-type="img" accept="image/*" />
+              <button class="px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700" onclick="this.previousElementSibling.click()">上传图片</button>
+              <div class="progress-bar flex-1 rounded"></div>
+            </div>
+          </td>
+          <td class="px-3 py-2 text-sm max-w-sm">
+            <input id="vid-input-${itemId}" type="text" value="${data.vid}" placeholder="Video URL" class="w-full text-xs rounded-md bg-gray-700 text-white p-1" />
+            <div class="flex items-center mt-2 space-x-2">
+              <input type="file" class="upload-file-input hidden" data-item-id="${itemId}" data-type="vid" accept="video/*" />
+              <button class="px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700" onclick="this.previousElementSibling.click()">上传视频</button>
+              <div class="progress-bar flex-1 rounded"></div>
+            </div>
+          </td>
+          <td class="px-3 py-2 whitespace-nowrap text-sm">
+            <button class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 save-btn" onclick="event.stopPropagation(); saveInlineItemChange('${itemId}', 'img-input-${itemId}', 'vid-input-${itemId}', this);">保存</button>
+          </td>
         </tr>`;
       }
       html += '</tbody></table></div>';
       container.innerHTML = html;
+      window.setupUploadListeners(); // 绑定上传事件
     }
 
     // ==================== 动画 & 交互 ====================
