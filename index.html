@@ -62,7 +62,7 @@
         let editWebTitleEl, editTitleEl, editSubtitleEl;
         let editTitleWeightEl, editSubtitleWeightEl, editTitleSpacingEl, editSubtitleSpacingEl;
         let editTitleColorEl, editSubtitleColorEl;
-        let editFisheyeRadiusEl, editDecayPowerEl, editMinScaleEl, editMaxScaleEl;
+        let editFisheyeRadiusEl, editAdecayPowerEl, editMinScaleEl, editMaxScaleEl;
         let editParallaxSmoothingEl, editCanvasScaleEl, editCanvasOffsetXEl;
         let editTwinkleFrequencyEl, editTwinkleAmplitudeEl;
         let adminToggleBtn, viewToggleBtn;
@@ -104,7 +104,7 @@
         let itemData = {};
         let mousePos = { x: 0, y: 0 };
         let isMouseActive = false;
-        let isMouseTrackingEnabled = false;  // ← 新增：控制是否真正开始追踪光标
+        let isMouseTrackingEnabled = false;   // ← 新增：控制是否真正开始鱼眼交互
         let animationFrameId = null;
         let parallaxOffset = { x: 0, y: 0 };
         const getSettingsDocPath = () => `/artifacts/${appId}/public/data/homepage_content/settings`;
@@ -278,7 +278,7 @@
             });
             applyGridTransform();
             cacheItemPositions();
-        |
+        }
         function createGrid() {
             if (items.length) return;
             gridContainer.innerHTML = ''; gridContainer.style.gridTemplateColumns = `repeat(10,1fr)`;
@@ -308,12 +308,9 @@
                 parallaxOffset.y += (ty - parallaxOffset.y) * currentParallaxSmoothing;
             }
             applyGridTransform();
-            if (window.currentView==='table' || (isAdminMode && window.currentView==='grid')) { 
-                if (isMouseActive) animationFrameId = requestAnimationFrame(updateFisheyeEffect); 
-                return; 
-            }
+            if (window.currentView==='table' || (isAdminMode && window.currentView==='grid')) { if (isMouseActive) animationFrameId = requestAnimationFrame(updateFisheyeEffect); return; }
 
-            // ← 新增：只有在光标追踪正式开启后才计算鱼眼和闪烁
+            // ← 仅在延迟结束后才真正执行鱼眼和闪烁计算
             if (!isMouseTrackingEnabled) {
                 if (isMouseActive) animationFrameId = requestAnimationFrame(updateFisheyeEffect);
                 return;
@@ -348,9 +345,7 @@
             });
             if (isMouseActive) animationFrameId = requestAnimationFrame(updateFisheyeEffect);
         }
-        function startAnimationLoop() { 
-            if (!animationFrameId) animationFrameId = requestAnimationFrame(updateFisheyeEffect); 
-        }
+        function startAnimationLoop() { if (!animationFrameId) animationFrameId = requestAnimationFrame(updateFisheyeEffect); }
         function openVideoModal(src) { videoPlayer.src = src; modal.classList.remove('hidden'); videoPlayer.play().catch(() => {}); }
         window.toggleEditMode = enable => {
             if (!isAdminMode) return;
@@ -451,21 +446,18 @@
             authErrorMessageEl = document.getElementById('auth-error-message');
             closeModal.onclick = closeVideoModalFunc;
             modal.onclick = e => e.target === modal && closeVideoModalFunc();
-
-            // ← 关键改动：mousemove 只记录位置，不立即触发交互
             window.addEventListener('mousemove', e => {
-                mousePos = { x: e.clientX, y: e.clientY };
+                mousePos = {x:e.clientX, y:e.clientY};
                 if (!isMouseActive) {
                     isMouseActive = true;
                     startAnimationLoop();
                 }
             });
-
             gridContainer.onclick = e => {
                 const el = e.target.closest('.grid-item');
                 if (!el) return;
                 const id = el.dataset.videoId;
-                if (isAdminMode) { switchView('table'); const row = document.getElementById('row-'+id); if(row) { selectItem(id,row); row.scrollIntoView({behavior:'smooth'}); } return; }
+                if (isAdminMode) { switchView('table'); const row = document.getElementById('row-'+id); if(row) { row.scrollIntoView({behavior:'smooth'}); } return; }
                 openVideoModal(itemData[id]?.vid || PLACEHOLDER_VID);
             };
         }
@@ -509,17 +501,12 @@
                         const id = `item_${i}`;
                         if (!itemData[id]) itemData[id] = { img: null, vid: PLACEHOLDER_VID, bgColor: getColorForColumn(getColumnIndex(i)) };
                     }
-                    if (!items.length) { 
-                        createGrid(); 
-                        startAnimationLoop(); 
-                    }
+                    if (!items.length) { createGrid(); startAnimationLoop(); }
                     else if (items.length > 0) updateGridDOM();
                 });
 
-                // ← 关键改动：页面加载完成后延迟 500ms 再真正开启光标交互
-                setTimeout(() => {
-                    isMouseTrackingEnabled = true;
-                }, 500);
+                // ← 唯一新增功能：加载完成后延迟 500ms 再开启真实光标交互
+                setTimeout(() => { isMouseTrackingEnabled = true; }, 500);
 
             } catch (e) {
                 console.warn("Firebase失败，进入本地模式");
@@ -528,12 +515,8 @@
                 mainTitleEl.textContent = DEFAULT_CONTENT.title;
                 subTextEl.textContent = DEFAULT_CONTENT.subtitle;
                 for (let i = 0; i < TOTAL_ITEMS; i++) itemData[`item_${i}`] = { img: null, vid: PLACEHOLDER_VID, bgColor: getColorForColumn(getColumnIndex(i)) };
-                createGrid(); 
-                startAnimationLoop();
-
-                setTimeout(() => {
-                    isMouseTrackingEnabled = true;
-                }, 500);
+                createGrid(); startAnimationLoop();
+                setTimeout(() => { isMouseTrackingEnabled = true; }, 500);
             }
         });
     </script>
@@ -557,58 +540,18 @@
                         <label class="block text-lg font-medium text-white mb-2">主标题</label>
                         <input id="edit-title" type="text" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="3D&Motion Creative&Production"/>
                         <div class="grid grid-cols-3 gap-3 mt-3">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-400 mb-1">字重</label>
-                                <select id="edit-title-weight" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2">
-                                    <option value="font-extrabold">特粗</option>
-                                    <option value="font-bold">粗体</option>
-                                    <option value="font-medium">标准</option>
-                                    <option value="font-normal">细体</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-400 mb-1">字间距</label>
-                                <select id="edit-title-spacing" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2">
-                                    <option value="tracking-tighter">紧</option>
-                                    <option value="tracking-tight">较紧</option>
-                                    <option value="tracking-normal" selected>默认</option>
-                                    <option value="tracking-wide">宽</option>
-                                    <option value="tracking-wider">更宽</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-400 mb-1">颜色</label>
-                                <input id="edit-title-color" type="color" value="#ffffff" class="w-full h-10 rounded-md bg-gray-700 border-gray-600 cursor-pointer"/>
-                            </div>
+                            <div><label class="block text-sm font-medium text-gray-400 mb-1">字重</label><select id="edit-title-weight" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2"><option value="font-extrabold">特粗</option><option value="font-bold">粗体</option><option value="font-medium">标准</option><option value="font-normal">细体</option></select></div>
+                            <div><label class="block text-sm font-medium text-gray-400 mb-1">字间距</label><select id="edit-title-spacing" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2"><option value="tracking-tighter">紧</option><option value="tracking-tight">较紧</option><option value="tracking-normal" selected>默认</option><option value="tracking-wide">宽</option><option value="tracking-wider">更宽</option></select></div>
+                            <div><label class="block text-sm font-medium text-gray-400 mb-1">颜色</label><input id="edit-title-color" type="color" value="#ffffff" class="w-full h-10 rounded-md bg-gray-700 border-gray-600 cursor-pointer"/></div>
                         </div>
                     </div>
                     <div class="p-4 bg-gray-800 rounded-lg">
                         <label class="block text-lg font-medium text-white mb-2">副标题</label>
                         <input id="edit-subtitle" type="text" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="Powerd by REDesign"/>
                         <div class="grid grid-cols-3 gap-3 mt-3">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-400 mb-1">字重</label>
-                                <select id="edit-subtitle-weight" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2">
-                                    <option value="font-normal">细体</option>
-                                    <option value="font-medium">标准</option>
-                                    <option value="font-bold">粗体</option>
-                                    <option value="font-extrabold">特粗</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-400 mb-1">字间距</label>
-                                <select id="edit-subtitle-spacing" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2">
-                                    <option value="tracking-tighter">紧</option>
-                                    <option value="tracking-tight">较紧</option>
-                                    <option value="tracking-normal" selected>默认</option>
-                                    <option value="tracking-wide">宽</option>
-                                    <option value="tracking-wider">更宽</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-400 mb-1">颜色</label>
-                                <input id="edit-subtitle-color" type="color" value="#9CA3AF" class="w-full h-10 rounded-md bg-gray-700 border-gray-600 cursor-pointer"/>
-                            </div>
+                            <div><label class="block text-sm font-medium text-gray-400 mb-1">字重</label><select id="edit-subtitle-weight" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2"><option value="font-normal">细体</option><option value="font-medium">标准</option><option value="font-bold">粗体</option><option value="font-extrabold">特粗</option></select></div>
+                            <div><label class="block text-sm font-medium text-gray-400 mb-1">字间距</label><select id="edit-subtitle-spacing" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2"><option value="tracking-tighter">紧</option><option value="tracking-tight">较紧</option><option value="tracking-normal" selected>默认</option><option value="tracking-wide">宽</option><option value="tracking-wider">更宽</option></select></div>
+                            <div><label class="block text-sm font-medium text-gray-400 mb-1">颜色</label><input id="edit-subtitle-color" type="color" value="#9CA3AF" class="w-full h-10 rounded-md bg-gray-700 border-gray-600 cursor-pointer"/></div>
                         </div>
                     </div>
                 </div>
@@ -618,11 +561,11 @@
                         <div><label class="block text-sm font-medium text-gray-400">鱼眼半径</label><input id="edit-fisheye-radius" type="number" step="10" min="100" max="1000" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="300"/></div>
                         <div><label class="block text-sm font-medium text-gray-400">衰减幅度</label><input id="edit-decay-power" type="number" step="0.1" min="1.0" max="5.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="2.0"/></div>
                         <div><label class="block text-sm font-medium text-gray-400">初始大小</label><input id="edit-min-scale" type="number" step="0.01" min="0.01" max="1.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="0.175"/></div>
-                        <div><label class="block text-sm font-medium text-gray-400">最大放大</label><input id="edit-max-scale" type="number" step="0.1" min="1.0" max="51" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="3.0"/></div>
+                        <div><label class="block text-sm font-medium text-gray-400">最大放大</label><input id="edit-max-scale" type="number" step="0.1" min="1.0" max="5.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="3.0"/></div>
                         <div><label class="block text-sm font-medium text-gray-400">动画平滑度</label><input id="edit-parallax-smoothing" type="number" step="0.01" min="0.01" max="1.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="0.2"/></div>
                         <div><label class="block text-sm font-medium text-gray-400">整体缩放</label><input id="edit-canvas-scale" type="number" step="0.05" min="0.5" max="2.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="1.0"/></div>
                         <div class="col-span-2 lg:col-span-3">
-                            <label class="block text-sm font-medium text-gray-400 mb-1">闪烁频率 (0.1~2.0)</label>
+                            <label class="block text-sm font-medium text-gray-400 mb-为核心">闪烁频率 (0.1~2.0)</label>
                             <input id="edit-twinkle-frequency" type="range" min="0.1" max="2" step="0.1" class="w-full" value="1"/>
                             <div class="text-center text-xs text-gray-400">当前：<span id="freq-val">1.0</span>x</div>
                         </div>
