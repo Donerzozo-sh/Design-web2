@@ -83,7 +83,7 @@
         let currentCanvasScale = 1.0;
         let currentCanvasOffsetX = 0;
 
-        const PARallax_INTENSITY = 0.1;
+        const PARALLAX_INTENSITY = 0.1;
         window.currentView = 'grid';
         let isAdminMode = false;
         let selectedItemId = null;
@@ -147,6 +147,47 @@
             return html;
         }
 
+        // ==================== 修复黑屏：完整 renderAdminTable ====================
+        function renderAdminTable() {
+            const container = document.getElementById('admin-table-view');
+            if (!container) return;
+            let html = `
+                <div class="bg-gray-900/95 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+                    <h1 class="text-3xl font-bold mb-6 text-red-400 flex items-center justify-between">
+                        网格素材列表编辑 (共 60 个项目)
+                        <button onclick="switchView('grid')" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 text-sm">返回网格视图</button>
+                    </h1>
+                    <div class="grid grid-cols-1 gap-4 max-w-5xl mx-auto">
+            `;
+            for (let i = 0; i < TOTAL_ITEMS; i++) {
+                const id = `item_${i}`;
+                const data = itemData[id] || { img: null, vid: PLACEHOLDER_VID, bgColor: getColorForColumn(getColumnIndex(i)) };
+                const thumb = renderLocationThumbnail(i, data.bgColor || getColorForColumn(getColumnIndex(i)));
+                html += `
+                    <div id="row-${id}" class="admin-table-row bg-gray-800/70 rounded-lg p-4 flex flex-col md:flex-row items-center gap-4 border border-gray-700 hover:border-gray-500 transition-all">
+                        <div class="flex-shrink-0">${thumb}</div>
+                        <div class="w-12 text-center text-gray-400 font-mono">#${i.toString().padStart(2,'0')}</div>
+                        <div class="flex-1">
+                            <label class="block text-xs text-gray-400 mb-1">图片 URL（留空则显示纯色）</label>
+                            <input type="text" id="img_${id}" value="${data.img || ''}" placeholder="https://..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-xs text-gray-400 mb-1">视频 URL（必填）</label>
+                            <input type="text" id="vid_${id}" value="${data.vid || PLACEHOLDER_VID}" placeholder="https://..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm">
+                        </div>
+                        <div class="flex-shrink-0">
+                            <button onclick="saveInlineItemChange('${id}', 'img_${id}', 'vid_${id}', this)" 
+                                    class="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition whitespace-nowrap">
+                                保存
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
         window.setAdminMode = mode => {
             isAdminMode = mode;
             const symbol = adminToggleBtn.querySelector('span');
@@ -177,7 +218,7 @@
                 isFocusMode = false;
                 gridEl.classList.add('hidden');
                 tableEl.classList.remove('hidden');
-                renderAdminTable();                      // ← 确保调用
+                renderAdminTable();  // 关键调用
                 topEdit.classList.add('hidden');
                 display.classList.add('hidden');
                 controls.classList.remove('z-30'); controls.classList.add('z-50');
@@ -236,51 +277,7 @@
             }
         };
 
-        // ==================== 完整修复的 renderAdminTable ====================
-        function renderAdminTable() {
-            const container = document.getElementById('admin-table-view');
-            if (!container) return;
-
-            let html = `
-                <div class="bg-gray-900/95 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-                    <h1 class="text-3xl font-bold mb-6 text-red-400 flex items-center justify-between">
-                        网格素材列表编辑 (共 60 个项目)
-                        <button onclick="switchView('grid')" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 text-sm">返回网格视图</button>
-                    </h1>
-                    <div class="grid grid-cols-1 gap-4 max-w-5xl mx-auto">
-            `;
-
-            for (let i = 0; i < TOTAL_ITEMS; i++) {
-                const id = `item_${i}`;
-                const data = itemData[id] || { img: '', vid: PLACEHOLDER_VID, bgColor: getColorForColumn(getColumnIndex(i)) };
-                const thumb = renderLocationThumbnail(i, data.bgColor || getColorForColumn(getColumnIndex(i)));
-
-                html += `
-                    <div id="row-${id}" class="admin-table-row bg-gray-800/70 rounded-lg p-4 flex flex-col md:flex-row items-center gap-4 border border-gray-700 hover:border-gray-500 transition-all">
-                        <div class="flex-shrink-0">${thumb}</div>
-                        <div class="w-12 text-center text-gray-400 font-mono">#${i.toString().padStart(2, '0')}</div>
-                        <div class="flex-1">
-                            <label class="block text-xs text-gray-400 mb-1">图片 URL（留空显示纯色）</label>
-                            <input type="text" id="img_${id}" value="${(data.img || '').replace(/"/g, '&quot;')}" placeholder="https://..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm">
-                        </div>
-                        <div class="flex-1">
-                            <label class="block text-xs text-gray-400 mb-1">视频 URL（必填）</label>
-                            <input type="text" id="vid_${id}" value="${(data.vid || '').replace(/"/g, '&quot;')}" placeholder="https://..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm">
-                        </div>
-                        <div class="flex-shrink-0">
-                            <button onclick="saveInlineItemChange('${id}', 'img_${id}', 'vid_${id}', this)" 
-                                    class="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition">
-                                保存
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-
-            html += `</div></div>`;
-            container.innerHTML = html;
-        }
-
+        // ==================== 视频关闭后动画100%复活 ====================
         function closeVideoModalFunc() {
             modal.classList.add('hidden');
             videoPlayer.pause(); videoPlayer.src = '';
@@ -447,7 +444,7 @@
                     radius: parseFloat(editFisheyeRadiusEl.value) || 300,
                     decayPower: parseFloat(editDecayPowerEl.value) || 2.0,
                     minScale: parseFloat(editMinScaleEl.value) || 0.175,
-                    scale: parseFloat(editMaxScaleEl.value) || 3.0,
+                    maxScale: parseFloat(editMaxScaleEl.value) || 3.0,
                     parallaxSmoothing: parseFloat(editParallaxSmoothingEl.value) || 0.2,
                     canvasScale: parseFloat(editCanvasScaleEl.value) || 1.0,
                     canvasOffsetX: parseInt(editCanvasOffsetXEl.value) || 0
@@ -457,6 +454,7 @@
             window.toggleEditMode(false);
         };
 
+        // ==================== 初始化 ====================
         function setupDOM() {
             gridContainer = document.getElementById('grid-container');
             modal = document.getElementById('video-modal');
@@ -530,9 +528,7 @@
                     currentCanvasScale = s.canvasScale || 1.0;
                     currentCanvasOffsetX = s.canvasOffsetX || 0;
                     applyGridTransform();
-
-                    // 只有网格已创建才更新图片
-                    if (items.length > 0) updateGridDOM();
+                    if (items.length > 0) updateGridDOM();   // 修复：防止初始化时报错
                 });
 
                 onSnapshot(collection(db, getGridCollectionPath()), snap => {
@@ -548,7 +544,7 @@
                         if (!itemData[id]) itemData[id] = { img: null, vid: PLACEHOLDER_VID, bgColor: getColorForColumn(getColumnIndex(i)) };
                     }
                     if (!items.length) { createGrid(); startAnimationLoop(); }
-                    else if (items.length > 0) updateGridDOM();   // ← 修复关键：防止脚本崩溃
+                    else if (items.length > 0) updateGridDOM();  // 修复：防止脚本崩溃导致图片不加载
                 });
             } catch (e) {
                 console.warn("Firebase失败，进入本地模式");
@@ -576,13 +572,78 @@
         </div>
 
         <div id="edit-mode-container" class="hidden bg-gray-900/90 backdrop-blur-sm p-6 rounded-xl shadow-2xl pointer-events-auto max-w-4xl">
-            <!-- 编辑面板内容保持原样，省略以节省篇幅 -->
-            <!-- （你原来的全部编辑面板代码不动） -->
             <h2 class="text-xl font-bold mb-4 text-red-400">顶部内容及视觉参数编辑 (Admin)</h2>
             <div class="space-y-4">
                 <div><label class="block text-sm font-medium text-gray-400">网站标题</label><input id="edit-web-title" type="text" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="灵感矩阵 | 设计作品集"/></div>
-                <!-- 其余编辑表单保持你第一次的完全一致 -->
-                <!-- 这里省略以防重复 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="p-4 bg-gray-800 rounded-lg">
+                        <label class="block text-lg font-medium text-white mb-2">主标题</label>
+                        <input id="edit-title" type="text" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="3D&Motion Creative&Production"/>
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-1">字重</label>
+                                <select id="edit-title-weight" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2">
+                                    <option value="font-extrabold">特粗</option>
+                                    <option value="font-bold">粗体</option>
+                                    <option value="font-medium">标准</option>
+                                    <option value="font-normal">细体</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-1">字间距</label>
+                                <select id="edit-title-spacing" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2">
+                                    <option value="tracking-tighter">紧</option>
+                                    <option value="tracking-tight">较紧</option>
+                                    <option value="tracking-normal" selected>默认</option>
+                                    <option value="tracking-wide">宽</option>
+                                    <option value="tracking-wider">更宽</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-gray-800 rounded-lg">
+                        <label class="block text-lg font-medium text-white mb-2">副标题</label>
+                        <input id="edit-subtitle" type="text" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="Powerd by REDesign"/>
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-1">字重</label>
+                                <select id="edit-subtitle-weight" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2">
+                                    <option value="font-normal">细体</option>
+                                    <option value="font-medium">标准</option>
+                                    <option value="font-bold">粗体</option>
+                                    <option value="font-extrabold">特粗</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-1">字间距</label>
+                                <select id="edit-subtitle-spacing" class="w-full rounded-md bg-gray-700 border-gray-600 text-white p-2">
+                                    <option value="tracking-tighter">紧</option>
+                                    <option value="tracking-tight">较紧</option>
+                                    <option value="tracking-normal" selected>默认</option>
+                                    <option value="tracking-wide">宽</option>
+                                    <option value="tracking-wider">更宽</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-gray-800 rounded-lg">
+                    <label class="block text-lg font-medium text-white mb-4">网格视觉参数</label>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <div><label class="block text-sm font-medium text-gray-400">鱼眼半径</label><input id="edit-fisheye-radius" type="number" step="10" min="100" max="1000" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="300"/></div>
+                        <div><label class="block text-sm font-medium text-gray-400">衰减幅度</label><input id="edit-decay-power" type="number" step="0.1" min="1.0" max="5.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="2.0"/></div>
+                        <div><label class="block text-sm font-medium text-gray-400">初始大小</label><input id="edit-min-scale" type="number" step="0.01" min="0.01" max="1.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="0.175"/></div>
+                        <div><label class="block text-sm font-medium text-gray-400">最大放大</label><input id="edit-max-scale" type="number" step="0.1" min="1.0" max="5.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="3.0"/></div>
+                        <div><label class="block text-sm font-medium text-gray-400">动画平滑度</label><input id="edit-parallax-smoothing" type="number" step="0.01" min="0.01" max="1.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="0.2"/></div>
+                        <div><label class="block text-sm font-medium text-gray-400">整体缩放 (0.5~2.0)</label><input id="edit-canvas-scale" type="number" step="0.05" min="0.5" max="2.0" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="1.0"/></div>
+                        <div class="col-span-2 lg:col-span-6">
+                            <label class="block text-sm font-medium text-gray-400 mb-1">左右平移 (-2000 ~ +2000px)</label>
+                            <input id="edit-canvas-offset-x" type="range" min="-2000" max="2000" step="50" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider" value="0"/>
+                            <div class="text-center text-white text-sm mt-1"><span id="offset-value">0</span> px</div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="flex space-x-4 mt-6">
                 <button class="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700" onclick="saveContent()">保存更改</button>
