@@ -61,10 +61,10 @@
         let editContainer, contentDisplay, topContentArea;
         let editWebTitleEl, editTitleEl, editSubtitleEl;
         let editTitleWeightEl, editSubtitleWeightEl, editTitleSpacingEl, editSubtitleSpacingEl;
-        let editTitleColorEl, editSubtitleColorEl; // ← 新增：标题颜色
+        let editTitleColorEl, editSubtitleColorEl;
         let editFisheyeRadiusEl, editDecayPowerEl, editMinScaleEl, editMaxScaleEl;
         let editParallaxSmoothingEl, editCanvasScaleEl, editCanvasOffsetXEl;
-        let editTwinkleFrequencyEl, editTwinkleAmplitudeEl; // ← 新增：闪烁频率与幅度
+        let editTwinkleFrequencyEl, editTwinkleAmplitudeEl;
         let adminToggleBtn, viewToggleBtn;
         let authModal, authUsernameEl, authPasswordEl, authErrorMessageEl, adminTableContainer;
         const NUM_COLS = 10;
@@ -78,8 +78,8 @@
         let currentParallaxSmoothing = 0.2;
         let currentCanvasScale = 1.0;
         let currentCanvasOffsetX = 0;
-        let currentTwinkleFrequency = 1.0; // ← 新增：闪烁频率倍率（默认1.0 = 原速度）
-        let currentTwinkleAmplitude = 1.0; // ← 新增：闪烁幅度倍率（默认1.0 = 原强度）
+        let currentTwinkleFrequency = 1.0;
+        let currentTwinkleAmplitude = 1.0;
         const PARALLAX_INTENSITY = 0.1;
         window.currentView = 'grid';
         let isAdminMode = false;
@@ -88,7 +88,7 @@
         const DEFAULT_FISHEYE_SETTINGS = {
             radius: 300, decayPower: 2.0, minScale: 0.175, maxScale: 3.0,
             parallaxSmoothing: 0.2, canvasScale: 1.0, canvasOffsetX: 0,
-            twinkleFrequency: 1.0, twinkleAmplitude: 1.0 // ← 新增默认值
+            twinkleFrequency: 1.0, twinkleAmplitude: 1.0
         };
         const GRID_COLORS = ['#EF4444','#F97316','#F59E0B','#10B981','#3B82F6','#6366F1','#8B5CF6','#EC4899','#FBBF24','#A78BFA','#4ADE80','#FB7185','#D946EF','#06B6D4'];
         function getColumnIndex(i) { return i % NUM_COLS; }
@@ -104,7 +104,7 @@
         let itemData = {};
         let mousePos = { x: 0, y: 0 };
         let isMouseActive = false;
-        let isMouseTrackingEnabled = false;   // ← 新增：真正开始鱼眼交互的开关
+        let isMouseOverCanvas = false;  // ← 新增：标记鼠标是否在画布内
         let animationFrameId = null;
         let parallaxOffset = { x: 0, y: 0 };
         const getSettingsDocPath = () => `/artifacts/${appId}/public/data/homepage_content/settings`;
@@ -300,32 +300,36 @@
         }
         function updateFisheyeEffect() {
             const cx = innerWidth/2, cy = innerHeight/2;
-            if (!isFocusMode) {
-                const tx = (mousePos.x - cx) * PARALLAX_INTENSITY;
-                const ty = (mousePos.y - cy) * PARALLAX_INTENSITY;
-                parallaxOffset.x += (tx - parallaxOffset.x) * currentParallaxSmoothing;
-                parallaxOffset.y += (ty - parallaxOffset.y) * currentParallaxSmoothing;
-            }
-            applyGridTransform();
-            if (window.currentView==='table' || (isAdminMode && window.currentView==='grid')) { if (isMouseActive) animationFrameId = requestAnimationFrame(updateFisheyeEffect); return; }
 
-            // ← 只有在 1s 延迟结束后才真正开始鱼眼+闪烁计算
-            if (!isMouseTrackingEnabled) {
-                if (isMouseActive) animationFrameId = requestAnimationFrame(updateFisheyeEffect);
-                return;
+            // ← 核心改动：只有当鼠标在画布区域内才进行交互
+            if (isMouseOverCanvas) {
+                if (!isFocusMode) {
+                    const tx = (mousePos.x - cx) * PARALLAX_INTENSITY;
+                    const ty = (mousePos.y - cy) * PARALLAX_INTENSITY;
+                    parallaxOffset.x += (tx - parallaxOffset.x) * currentParallaxSmoothing;
+                    parallaxOffset.y += (ty - parallaxOffset.y) * currentParallaxSmoothing;
+                }
+                applyGridTransform();
+            }
+
+            if (window.currentView==='table' || (isAdminMode && window.currentView==='grid')) { 
+                if (isMouseActive) animationFrameId = requestAnimationFrame(updateFisheyeEffect); 
+                return; 
             }
 
             const radius = innerWidth <= 768 ? currentFisheyeRadius * 0.6 : currentFisheyeRadius;
             items.forEach(it => {
                 const ax = it.center.x + parallaxOffset.x;
                 const ay = it.center.y + parallaxOffset.y;
-                const dist = Math.hypot(mousePos.x - ax, mousePos.y - ay);
+                let dist = Math.hypot(mousePos.x - ax, mousePos.y - ay);
                 let scale, opacity = 0.7, z = 1, bright = 1.0;
+
                 if (isFocusMode && it.el.dataset.videoId === selectedItemId) {
                     scale = currentMaxScale * 1.5; opacity = 1.0; z = 100;
                 } else if (isFocusMode) {
                     scale = currentMinScale * 0.8; opacity = 0.4;
-                } else if (dist >= radius) {
+                } else if (!isMouseOverCanvas || dist >= radius) {
+                    // 鼠标不在画布内或超出鱼眼范围 → 只保留远景闪烁
                     it.el.twinklePhase += 0.004 * it.el.twinkleSpeed * currentTwinkleFrequency;
                     const tw = (Math.sin(it.el.twinklePhase) + 1) / 2;
                     scale = currentMinScale * (0.7 + tw * 0.6 * currentTwinkleAmplitude);
@@ -426,8 +430,8 @@
             editSubtitleWeightEl = document.getElementById('edit-subtitle-weight');
             editTitleSpacingEl = document.getElementById('edit-title-spacing');
             editSubtitleSpacingEl = document.getElementById('edit-subtitle-spacing');
-            editTitleColorEl = document.getElementById('edit-title-color'); // ← 新增
-            editSubtitleColorEl = document.getElementById('edit-subtitle-color'); // ← 新增
+            editTitleColorEl = document.getElementById('edit-title-color');
+            editSubtitleColorEl = document.getElementById('edit-subtitle-color');
             editFisheyeRadiusEl = document.getElementById('edit-fisheye-radius');
             editDecayPowerEl = document.getElementById('edit-decay-power');
             editMinScaleEl = document.getElementById('edit-min-scale');
@@ -435,8 +439,8 @@
             editParallaxSmoothingEl = document.getElementById('edit-parallax-smoothing');
             editCanvasScaleEl = document.getElementById('edit-canvas-scale');
             editCanvasOffsetXEl = document.getElementById('edit-canvas-offset-x');
-            editTwinkleFrequencyEl = document.getElementById('edit-twinkle-frequency'); // ← 新增
-            editTwinkleAmplitudeEl = document.getElementById('edit-twinkle-amplitude'); // ← 新增
+            editTwinkleFrequencyEl = document.getElementById('edit-twinkle-frequency');
+            editTwinkleAmplitudeEl = document.getElementById('edit-twinkle-amplitude');
             adminToggleBtn = document.getElementById('admin-toggle-btn');
             viewToggleBtn = document.getElementById('view-toggle-btn');
             authModal = document.getElementById('auth-modal');
@@ -445,12 +449,32 @@
             authErrorMessageEl = document.getElementById('auth-error-message');
             closeModal.onclick = closeVideoModalFunc;
             modal.onclick = e => e.target === modal && closeVideoModalFunc();
-            window.addEventListener('mousemove', e => { mousePos = {x:e.clientX, y:e.clientY}; if (!isMouseActive) { isMouseActive = true; startAnimationLoop(); } });
+
+            // ← 新增：监听鼠标是否在画布区域内
+            gridContainer.addEventListener('mouseenter', () => {
+                isMouseOverCanvas = true;
+                if (!isMouseActive) {
+                    isMouseActive = true;
+                    startAnimationLoop();
+                }
+            });
+            gridContainer.addEventListener('mouseleave', () => {
+                isMouseOverCanvas = false;
+            });
+
+            window.addEventListener('mousemove', e => { 
+                mousePos = {x:e.clientX, y:e.clientY}; 
+                if (!isMouseActive && isMouseOverCanvas) { 
+                    isMouseActive = true; 
+                    startAnimationLoop(); 
+                } 
+            });
+
             gridContainer.onclick = e => {
                 const el = e.target.closest('.grid-item');
                 if (!el) return;
                 const id = el.dataset.videoId;
-                if (isAdminMode) { switchView('table'); const row = document.getElementById('row-'+id); if(row) { row.scrollIntoView({behavior:'smooth'}); } return; }
+                if (isAdminMode) { switchView('table'); const row = document.getElementById('row-'+id); if(row) { selectItem(id,row); row.scrollIntoView({behavior:'smooth'}); } return; }
                 openVideoModal(itemData[id]?.vid || PLACEHOLDER_VID);
             };
         }
@@ -474,7 +498,6 @@
                     currentDecayPower = s.decayPower;
                     currentMinScale = s.minScale;
                     currentMaxScale = s.maxScale || 3.0;
-                    currentPar
                     currentParallaxSmoothing = s.parallaxSmoothing || 0.2;
                     currentCanvasScale = s.canvasScale || 1.0;
                     currentCanvasOffsetX = s.canvasOffsetX || 0;
@@ -498,10 +521,6 @@
                     if (!items.length) { createGrid(); startAnimationLoop(); }
                     else if (items.length > 0) updateGridDOM();
                 });
-
-                // ← 你唯一要求的功能：延迟 0.5 秒再真正开启光标交互
-                setTimeout(() => { isMouseTrackingEnabled = true; }, 500);
-
             } catch (e) {
                 console.warn("Firebase失败，进入本地模式");
                 isLocalMode = true;
@@ -510,12 +529,9 @@
                 subTextEl.textContent = DEFAULT_CONTENT.subtitle;
                 for (let i = 0; i < TOTAL_ITEMS; i++) itemData[`item_${i}`] = { img: null, vid: PLACEHOLDER_VID, bgColor: getColorForColumn(getColumnIndex(i)) };
                 createGrid(); startAnimationLoop();
-
-                setTimeout(() => { isMouseTrackingEnabled = true; }, 500);
             }
         });
     </script>
-    <!-- 以下 HTML 完全保留你原有结构，只新增了颜色选择器和闪烁调节滑块 -->
     <div id="top-content-area" class="fixed top-0 left-0 right-0 p-8 md:p-12 z-20 text-white pointer-events-none transition-all duration-300">
         <div id="admin-persistent-controls" class="absolute top-8 right-8 md:top-12 md:right-12 z-30 flex space-x-4 pointer-events-auto">
             <button id="view-toggle-btn" class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 hidden"
@@ -525,7 +541,7 @@
         </div>
         <div id="content-display" class="flex flex-col">
             <h1 id="main-title" class="text-white text-4xl font-extrabold cursor-text transition-all duration-500 hover:text-yellow-400 pointer-events-auto md:text-8xl tracking-normal" onclick="toggleEditMode(true)">3D&Motion Creative&Production</h1>
-            <p id="sub-text" class="text-gray-400 text-base font-normal cursor-text transition-all duration-500 hover:text-gray-200 pointer-events-auto md:text-2xl tracking-normal" onclick="toggleEditMode(true)">Powerd by REDesign</p>
+            <p id="sub-text" class="text-gray-400 text-base font-normal cursor-text transition-all duration-500 hover:text-gray-200 pointer-events-auto md:text--2xl tracking-normal" onclick="toggleEditMode(true)">Powerd by REDesign</p>
         </div>
         <div id="edit-mode-container" class="hidden bg-gray-900/90 backdrop-blur-sm p-6 rounded-xl shadow-2xl pointer-events-auto max-w-4xl">
             <h2 class="text-xl font-bold mb-4 text-red-400">顶部内容及视觉参数编辑 (Admin)</h2>
@@ -580,7 +596,7 @@
                                     <option value="tracking-tighter">紧</option>
                                     <option value="tracking-tight">较紧</option>
                                     <option value="tracking-normal" selected>默认</option>
-                                    <option value="tracking-wide in-wide">宽</option>
+                                    <option value="tracking-wide">宽</option>
                                     <option value="tracking-wider">更宽</option>
                                 </select>
                             </div>
@@ -655,4 +671,3 @@
     </div>
 </body>
 </html>
-
