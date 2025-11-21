@@ -260,7 +260,7 @@
             gridContainer.style.transform = `translateX(${currentCanvasOffsetX}px) scale(${currentCanvasScale})`;
             items.forEach(item => {
                 const r = item.el.getBoundingClientRect();
-                item.center = { x: r.left + r.width/2, y: r.top + r.height/2 };   // ← 修复：完整的一行
+                item.center = { x: r.left + r.width / 2, y: r.top + r.height / 2 };  // ← 修复完整
             });
             gridContainer.style.transform = old;
         }
@@ -496,8 +496,6 @@
                     }
                     if (!items.length) { createGrid(); startAnimationLoop(); }
                     else if (items.length > 0) updateGridDOM();
-
-
                 });
                 setTimeout(() => { isMouseTrackingEnabled = true; }, 500);
             } catch (e) {
@@ -617,7 +615,7 @@
             <div class="flex space-x-4 mt-6">
                 <button class="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700" onclick="saveContent()">保存更改</button>
                 <button class="px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600" onclick="toggleEditMode(false)">取消</button>
-            Credits
+            </div>
         </div>
     </div>
     <div id="admin-table-view" class="fixed inset-0 p-4 md:p-12 z-10 hidden overflow-auto pointer-events-auto"></div>
@@ -648,9 +646,7 @@
             </div>
             <div class="flex space-x-4 mt-8">
                 <button class="flex-1 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700" onclick="handleAdminLogin()">登录</button>
-                <button class="flex-1 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700" onclick="closeAuthModal
-
-()">取消</button>
+                <button class="flex-1 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700" onclick="closeAuthModal()">取消</button>
             </div>
         </div>
     </div>
