@@ -104,7 +104,7 @@
         let itemData = {};
         let mousePos = { x: 0, y: 0 };
         let isMouseActive = false;
-        let isMouseTrackingEnabled = false;
+        let isMouseOverCanvas = false;
         let animationFrameId = null;
         let parallaxOffset = { x: 0, y: 0 };
         const getSettingsDocPath = () => `/artifacts/${appId}/public/data/homepage_content/settings`;
@@ -144,11 +144,11 @@
                         <div class="w-12 text-center text-gray-400 font-mono">#${i.toString().padStart(2,'0')}</div>
                         <div class="flex-1">
                             <label class="block text-xs text-gray-400 mb-1">图片 URL（留空则显示纯色）</label>
-                            <input type="text" id="img_${id}" value="${data.img || ''}" placeholder="https://..." class="w-full px-3 py-2 bg-gray-700 border-gray-600 rounded text-white text-sm">
+                            <input type="text" id="img_${id}" value="${data.img || ''}" placeholder="https://..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm">
                         </div>
                         <div class="flex-1">
                             <label class="block text-xs text-gray-400 mb-1">视频 URL（必填）</label>
-                            <input type="text" id="vid_${id}" value="${data.vid || PLACEHOLDER_VID}" placeholder="https://..." class="w-full px-3 py-2 bg-gray-700 border-gray-600 rounded text-white text-sm">
+                            <input type="text" id="vid_${id}" value="${data.vid || PLACEHOLDER_VID}" placeholder="https://..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm">
                         </div>
                         <div class="flex-shrink-0">
                             <button onclick="saveInlineItemChange('${id}', 'img_${id}', 'vid_${id}', this)"
@@ -209,8 +209,7 @@
             isFocusMode = false; selectedItemId = null;
             resetGridScale(); resetGrid();
             document.querySelectorAll('.admin-table-row').forEach(r => r.classList.remove('selected-row'));
-            isMouseActive = true;
-            startAnimationLoop();
+            isMouseActive = true; startAnimationLoop();
         }
         window.handleAdminToggle = () => isAdminMode ? window.setAdminMode(false) || resetFocusAndScale() : window.openAuthModal();
         window.openAuthModal = () => { authModal.classList.remove('hidden'); authErrorMessageEl.classList.add('hidden'); authPasswordEl.value = ''; authUsernameEl.value = 'admin'; };
@@ -243,14 +242,16 @@
         };
         function closeVideoModalFunc() {
             modal.classList.add('hidden');
-            videoPlayer.pause(); videoPlayer.src = '';
+            videoPlayer.pause(); 
+            videoPlayer.removeAttribute('src');
+            videoPlayer.load();
             resetFocusAndScale();
             isMouseActive = true;
             let frames = 60;
             const wake = () => {
                 updateFisheyeEffect();
                 if (--frames > 0) requestAnimationFrame(wake);
-                else if (isMouseActive) startAnimationLoop();
+                else startAnimationLoop();
             };
             wake();
             setTimeout(cacheItemPositions, 100);
@@ -260,7 +261,7 @@
             gridContainer.style.transform = `translateX(${currentCanvasOffsetX}px) scale(${currentCanvasScale})`;
             items.forEach(item => {
                 const r = item.el.getBoundingClientRect();
-                item.center = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; // ← 关键修复：加空格
+                item.center = { x: r.left + r.width/2, y: r.top + r.height/2 };
             });
             gridContainer.style.transform = old;
         }
@@ -301,20 +302,17 @@
         }
         function updateFisheyeEffect() {
             const cx = innerWidth/2, cy = innerHeight/2;
-            if (!isFocusMode) {
+            if (isMouseOverCanvas && !isFocusMode) {
                 const tx = (mousePos.x - cx) * PARALLAX_INTENSITY;
                 const ty = (mousePos.y - cy) * PARALLAX_INTENSITY;
                 parallaxOffset.x += (tx - parallaxOffset.x) * currentParallaxSmoothing;
                 parallaxOffset.y += (ty - parallaxOffset.y) * currentParallaxSmoothing;
+                applyGridTransform();
             }
-            applyGridTransform();
-            if (window.currentView==='table' || (isAdminMode && window.currentView==='grid')) { if (isMouseActive) animationFrameId = requestAnimationFrame(updateFisheyeEffect); return; }
-
-            if (!isMouseTrackingEnabled) {
+            if (window.currentView==='table' || (isAdminMode && window.currentView==='grid')) {
                 if (isMouseActive) animationFrameId = requestAnimationFrame(updateFisheyeEffect);
                 return;
             }
-
             const radius = innerWidth <= 768 ? currentFisheyeRadius * 0.6 : currentFisheyeRadius;
             items.forEach(it => {
                 const ax = it.center.x + parallaxOffset.x;
@@ -325,14 +323,14 @@
                     scale = currentMaxScale * 1.5; opacity = 1.0; z = 100;
                 } else if (isFocusMode) {
                     scale = currentMinScale * 0.8; opacity = 0.4;
-                } else if (dist >= radius) {
+                } else if (!isMouseOverCanvas || dist >= radius) {
                     it.el.twinklePhase += 0.004 * it.el.twinkleSpeed * currentTwinkleFrequency;
                     const tw = (Math.sin(it.el.twinklePhase) + 1) / 2;
                     scale = currentMinScale * (0.7 + tw * 0.6 * currentTwinkleAmplitude);
                     bright = 0.3 + tw * 1.1 * currentTwinkleAmplitude;
                 } else {
                     const p = 1 - dist / radius;
-                    const e = 1 - Math.pow( 1 - p, currentDecayPower);
+                    const e = 1 - Math.pow(1 - p, currentDecayPower);
                     scale = currentMinScale + (currentMaxScale - currentMinScale) * e;
                     opacity = 0.7 + 0.3 * e;
                     z = 2 + Math.floor(e * 8);
@@ -344,8 +342,14 @@
             });
             if (isMouseActive) animationFrameId = requestAnimationFrame(updateFisheyeEffect);
         }
-        function startAnimationLoop() { if (!animationFrameId) animationFrameId = requestAnimationFrame(updateFisheyeEffect); }
-        function openVideoModal(src) { videoPlayer.src = src; modal.classList.remove('hidden'); videoPlayer.play().catch(() => {}); }
+        function startAnimationLoop() {
+            if (!animationFrameId) animationFrameId = requestAnimationFrame(updateFisheyeEffect);
+        }
+        function openVideoModal(src) { 
+            videoPlayer.src = src; 
+            modal.classList.remove('hidden'); 
+            videoPlayer.play().catch(() => {}); 
+        }
         window.toggleEditMode = enable => {
             if (!isAdminMode) return;
             if (enable) {
@@ -445,7 +449,17 @@
             authErrorMessageEl = document.getElementById('auth-error-message');
             closeModal.onclick = closeVideoModalFunc;
             modal.onclick = e => e.target === modal && closeVideoModalFunc();
-            window.addEventListener('mousemove', e => { mousePos = {x:e.clientX, y:e.clientY}; if (!isMouseActive) { isMouseActive = true; startAnimationLoop(); } });
+            gridContainer.addEventListener('mouseenter', () => {
+                isMouseOverCanvas = true;
+                isMouseActive = true;
+                startAnimationLoop();
+            });
+            gridContainer.addEventListener('mouseleave', () => {
+                isMouseOverCanvas = false;
+            });
+            window.addEventListener('mousemove', e => {
+                mousePos = {x: e.clientX, y: e.clientY};
+            });
             gridContainer.onclick = e => {
                 const el = e.target.closest('.grid-item');
                 if (!el) return;
@@ -494,10 +508,9 @@
                         const id = `item_${i}`;
                         if (!itemData[id]) itemData[id] = { img: null, vid: PLACEHOLDER_VID, bgColor: getColorForColumn(getColumnIndex(i)) };
                     }
-                    if (!items.length) { createGrid(); startAnimationLoop(); }
+                    if (!items.length) { createGrid(); isMouseActive = true; startAnimationLoop(); }
                     else if (items.length > 0) updateGridDOM();
                 });
-                setTimeout(() => { isMouseTrackingEnabled = true; }, 500);
             } catch (e) {
                 console.warn("Firebase失败，进入本地模式");
                 isLocalMode = true;
@@ -505,8 +518,7 @@
                 mainTitleEl.textContent = DEFAULT_CONTENT.title;
                 subTextEl.textContent = DEFAULT_CONTENT.subtitle;
                 for (let i = 0; i < TOTAL_ITEMS; i++) itemData[`item_${i}`] = { img: null, vid: PLACEHOLDER_VID, bgColor: getColorForColumn(getColumnIndex(i)) };
-                createGrid(); startAnimationLoop();
-                setTimeout(() => { isMouseTrackingEnabled = true; }, 500);
+                createGrid(); isMouseActive = true; startAnimationLoop();
             }
         });
     </script>
@@ -522,7 +534,7 @@
             <p id="sub-text" class="text-gray-400 text-base font-normal cursor-text transition-all duration-500 hover:text-gray-200 pointer-events-auto md:text-2xl tracking-normal" onclick="toggleEditMode(true)">Powerd by REDesign</p>
         </div>
         <div id="edit-mode-container" class="hidden bg-gray-900/90 backdrop-blur-sm p-6 rounded-xl shadow-2xl pointer-events-auto max-w-4xl">
-            <h2 class="text-xl font-bold mb-4 text-red-400">顶部内容及视觉参数编辑 (Admin)</h2>
+            <h2 class="text-xl Structural font-bold mb-4 text-red-400">顶部内容及视觉参数编辑 (Admin)</h2>
             <div class="space-y-4">
                 <div><label class="block text-sm font-medium text-gray-400">网站标题</label><input id="edit-web-title" type="text" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white p-2" value="灵感矩阵 | 设计作品集"/></div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -624,10 +636,11 @@
     </div>
     <div id="grid-container" class="absolute inset-0 m-auto grid" style="transform-origin:center center;transform:translate(0,0) scale(1);transform-style:preserve-3d;"></div>
 
+    <!-- 关键修改：视频模态框不再强制 aspect-video，改为 object-contain 自适应任意比例 -->
     <div id="video-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex justify-center items-center hidden">
-        <div class="relative w-full h-full max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+        <div class="relative w-full h-full max-w-[95vw] max-h-[95vh] flex justify-center items-center">
             <video id="video-player" class="max-w-full max-h-full object-contain" controls autoplay playsinline></video>
-            <button id="close-modal" class="absolute top-4 right-4 text-white p-2 rounded-full bg-black/50 hover:bg-black/80 transition">
+            <button id="close-modal" class="absolute top-4 right-4 text-white p-3 rounded-full bg-black/60 hover:bg-black/80 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
